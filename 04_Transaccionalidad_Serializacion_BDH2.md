@@ -1,4 +1,4 @@
-# PHM Semana 4 — Kotlin + Spring Boot: Persistencia ORM/JPA, Tests de Integración y Serialización
+# Clase 4 — Kotlin + Spring Boot: Persistencia ORM/JPA, Tests de Integración y Serialización
 
 > Script original del profesor: [fdodino/scripts-clase - clase2-orm.md](https://github.com/fdodino/scripts-clase/blob/master/phm/ORM/clase2-orm.md)
 >

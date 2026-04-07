@@ -1,4 +1,4 @@
-# Clase 3 - ORM: Relaciones JPA, Testing e Integración, Migraciones
+# Clase 5 - ORM: Relaciones JPA, Testing e Integración, Migraciones
 
 > Script original del profesor: [fdodino/scripts-clase - clase3-orm.md](https://github.com/fdodino/scripts-clase/blob/master/phm/ORM/clase3-orm.md)
 >
