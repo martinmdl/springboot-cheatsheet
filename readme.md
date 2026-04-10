@@ -1,5 +1,6 @@
 # Index
 
+- [Clase 0 - Arquitectura y Tips de un Backend en Objetos](00_Estructura_TIPs_Backend_POO.md)
 - [Clase 1 - Persistencia, Modelo Relacional y Docker](01_ModeloRelacional_Docker.md)
 - [Clase 2 - Mapeo Objeto/Relacional (ORM)](02_MapeoObjetoRelacional.md)
 - [Clase 3 - Taller Práctico: Mapeo Objeto/Relacional](03_TallerORM.md)
