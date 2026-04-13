@@ -7,3 +7,4 @@
 - [Clase 4 - Persistencia ORM/JPA, Tests de Integración y Serialización](04_Transaccionalidad_Serializacion_BDH2.md)
 - [Clase 5 - ORM: Relaciones JPA, Testing e Integración, Migraciones](05_A_RelacionesJPA_TestIntegracion_MigracionBD.md)
 - [Clase 5 Bonus - FKs y Bidireccionalidad, Hidratación y Arquitectura](05_B_FKs_Bidireccionalidad_Hidratacion.md)
+- [Clase 5 GPT - Proxies JPA, Optional y Null Safety en Kotlin](05_GPT_FetchDB_NullSafety.md)

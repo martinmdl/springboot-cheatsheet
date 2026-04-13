@@ -1,256 +1,96 @@
-# Kotlin + Spring Data JPA: `getById`, `findById`, proxies y null-safety
+# Proxies JPA, Optional y Null Safety en Kotlin
 
-## Índice
-
-1. [Introducción](#1-introducción)
-2. [`getById` y proxies en JPA](#2-getbyid-y-proxies-en-jpa)
-3. [¿Qué es un proxy y cómo funciona internamente?](#3-qué-es-un-proxy-y-cómo-funciona-internamente)
-4. [`Optional<T>` vs Proxy](#4-optionalt-vs-proxy)
-5. [Null safety en Kotlin (`?`, `?.`, `?:`, `!!`)](#5-null-safety-en-kotlin----)
-6. [Métodos de acceso a datos en Spring Data JPA](#6-métodos-de-acceso-en-spring-data-jpa)
-7. [Recomendaciones en Kotlin](#7-recomendaciones-en-kotlin)
-8. [Ejemplos completos](#8-ejemplos-completos)
-9. [Fuentes](#9-fuentes)
+> Referencias: [Spring Data JPA](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories) | [Hibernate Proxy](https://docs.jboss.org/hibernate/orm/6.4/userguide/html_single/Hibernate_User_Guide.html#fetching-strategies) | [Kotlin Null Safety](https://kotlinlang.org/docs/null-safety.html)
 
 ---
 
-## 1. Introducción
+## ¿Qué devuelve `getById` si el ID no existe?
 
-En aplicaciones Kotlin con Spring Data JPA existen varias formas de obtener entidades desde la base de datos. Las diferencias entre `getById`, `findById` y `findByIdOrNull` no son triviales y afectan:
-
-* Cuándo se ejecuta la query
-* Cómo se manejan valores inexistentes
-* Qué tipo se devuelve
-* Qué excepciones pueden ocurrir
-
----
-
-## 2. `getById` y proxies en JPA
+No devuelve `null` ni lanza excepción inmediatamente. Devuelve un **proxy** — la excepción aparece al acceder a sus propiedades:
 
 ```kotlin
-val book = bookRepository.getById(idBook)
+val book = bookRepository.getById(999L)  // ok — devuelve proxy
+println(book.title)                       // aquí: EntityNotFoundException
 ```
 
-Este método **NO devuelve `null`**.
-
-En cambio:
-
-* Devuelve un **proxy**
-* No ejecuta una query inmediatamente
-* La excepción ocurre más tarde
-
-### Comportamiento
+**¿Cuándo usar `getById`?** Solo cuando necesitás una referencia para construir una FK sin fetchear el objeto completo:
 
 ```kotlin
-val book = bookRepository.getById(idBook)
-println(book.title) // ← aquí puede fallar
-```
-
-Si el registro no existe:
-
-* Se lanza `EntityNotFoundException` al acceder a una propiedad
-
----
-
-## 3. ¿Qué es un proxy y cómo funciona internamente?
-
-Un proxy es un objeto que:
-
-* Representa una entidad real
-* Contiene inicialmente solo el `id`
-* Está gestionado por el contexto de persistencia (Hibernate Session)
-
-### Flujo interno
-
-1. `getById(id)` → devuelve proxy
-2. No hay acceso a DB todavía
-3. Acceso a propiedad (`book.title`)
-4. Hibernate ejecuta:
-
-   ```sql
-   SELECT * FROM book WHERE id = ?
-   ```
-5. Resultado:
-
-   * Existe → hidrata el objeto
-   * No existe → `EntityNotFoundException`
-
-### Casos importantes
-
-* Si la sesión está cerrada:
-
-  * `LazyInitializationException`
-* Mejora performance al diferir carga (lazy loading)
-
----
-
-## 4. `Optional<T>` vs Proxy
-
-`Optional<T>` **NO es un proxy**.
-
-Es un contenedor de valor.
-
-```kotlin
-val opt: Optional<Book> = bookRepository.findById(id)
-```
-
-### Características
-
-* Representa presencia o ausencia
-* No tiene lazy loading
-* No ejecuta lógica diferida
-
-### Uso
-
-```kotlin
-if (opt.isPresent) {
-    val book = opt.get()
-}
-```
-
-O más idiomático en Java:
-
-```java
-opt.orElse(null)
+val author = authorRepository.getById(authorId)  // proxy — no va a la BD
+bookRepository.save(Book(title = "...", author = author))  // Hibernate usa el id del proxy
 ```
 
 ---
 
-## 5. Null safety en Kotlin
+## ¿Qué es exactamente un proxy?
 
-Kotlin distingue explícitamente entre tipos nullables y no nullables.
+Un objeto sustituto generado por Hibernate en runtime (via ByteBuddy). Solo contiene el `id`. Al acceder a cualquier otra propiedad, dispara el `SELECT`:
 
-### Tipos
-
-```kotlin
-var book: Book?   // puede ser null
-var book2: Book   // no puede ser null
-```
+- **Registro existe** → hidrata el objeto.
+- **Registro no existe** → `EntityNotFoundException`.
+- **Sesión cerrada** → `LazyInitializationException` (típico con `open-in-view: false`).
 
 ---
 
-### Safe call (`?.`)
+## ¿`Optional<T>` es lo mismo que un proxy?
+
+No. `Optional` es un contenedor de valor sin comportamiento lazy — el `SELECT` ya se ejecutó cuando lo tenés en mano.
 
 ```kotlin
-book?.title
+val opt = bookRepository.findById(id)   // SELECT ejecutado
+opt.isPresent                           // true/false, sin más queries
 ```
 
-Equivalente a:
-
-```kotlin
-if (book != null) book.title else null
-```
+Es la API de Java. En Kotlin hay algo mejor.
 
 ---
 
-### Elvis operator (`?:`)
+## ¿Cuál es el método estándar en Kotlin?
 
-```kotlin
-val title = book?.title ?: "sin título"
-```
-
----
-
-### Not-null assertion (`!!`)
-
-```kotlin
-book!!.title
-```
-
-* Si `book == null` → `KotlinNullPointerException`
-
----
-
-## 6. Métodos de acceso en Spring Data JPA
-
-### `getById(id)`
-
-* Devuelve proxy
-* Lazy loading
-* Puede lanzar excepción al acceder
-* No retorna null
-
----
-
-### `findById(id)`
-
-```kotlin
-val book: Optional<Book> = bookRepository.findById(id)
-```
-
-* Estilo Java
-* Verboso en Kotlin
-
----
-
-### `findByIdOrNull(id)` (Kotlin)
+`findByIdOrNull` — extensión de Spring Data que devuelve `Book?` en lugar de `Optional<Book>`:
 
 ```kotlin
 val book: Book? = bookRepository.findByIdOrNull(id)
 ```
 
-* Extensión de Kotlin
-* Devuelve nullable
-* Más idiomático
+Internamente es `findById(id).orElse(null)`. Más idiomático que `Optional` en Kotlin.
+
+**Comparativa rápida:**
+
+| Método | Devuelve | Va a la BD | Usar cuando |
+|---|---|---|---|
+| `getById` | Proxy | Al acceder propiedades | Solo para construir asociaciones |
+| `findById` | `Optional<Book>` | Inmediatamente | Interop con Java |
+| `findByIdOrNull` ✅ | `Book?` | Inmediatamente | Default en Kotlin |
 
 ---
 
-## 7. Recomendaciones en Kotlin
+## ¿Cómo funciona el `?` en Kotlin?
 
-Uso general:
-
-* Preferir `findByIdOrNull`
-* Evitar `getById` salvo que necesites lazy loading explícito
-* Evitar `Optional` en Kotlin
-
-Tabla resumen:
-
-| Método         | Tipo devuelto | Lazy | Idiomático Kotlin |
-| -------------- | ------------- | ---- | ----------------- |
-| getById        | Proxy         | Sí   | No                |
-| findById       | Optional<T>   | No   | No                |
-| findByIdOrNull | T?            | No   | Sí                |
-
----
-
-## 8. Ejemplos completos
-
-### Caso recomendado
+Es parte del **tipo**, no un operador. Le dice al compilador que la variable puede ser `null`:
 
 ```kotlin
-val book = bookRepository.findByIdOrNull(id)
+var book: Book    // nunca null — garantía en compilación
+var book: Book?   // puede ser Book o null
+```
 
-val title = book?.title ?: "sin título"
+**Operadores para trabajar con nullable:**
+
+```kotlin
+book?.title               // safe call: devuelve null si book es null
+book?.title ?: "default"  // Elvis: valor por defecto si es null
+book!!.title              // not-null assertion: lanza KotlinNullPointerException si es null (evitar)
 ```
 
 ---
 
-### Caso con `getById`
+## Patrón estándar en el Service
 
 ```kotlin
-val book = bookRepository.getById(id)
-
-// Puede fallar aquí si no existe
-println(book.title)
+@Transactional(readOnly = true)
+fun getBook(id: Long): Book =
+    bookRepository.findByIdOrNull(id)
+        ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Book $id no existe")
 ```
 
----
-
-### Caso con Optional
-
-```kotlin
-val opt = bookRepository.findById(id)
-
-if (opt.isPresent) {
-    println(opt.get().title)
-}
-```
-
----
-
-## 9. Fuentes
-
-* Spring Data JPA Reference Documentation
-* Hibernate ORM Documentation
-* Kotlin Language Documentation (Null Safety)
-* Java Optional API (java.util.Optional)
+El `?:` convierte el `Book?` en `Book` — si es null lanza el 404, si no el compilador sabe que es non-nullable y no te pide más verificaciones.
