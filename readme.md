@@ -8,4 +8,4 @@
 - [Clase 5 - ORM: Relaciones JPA, Testing e Integración, Migraciones](05_A_RelacionesJPA_TestIntegracion_MigracionBD.md)
 - [Clase 5 Bonus - FKs y Bidireccionalidad, Hidratación y Arquitectura](05_B_FKs_Bidireccionalidad_Hidratacion.md)
 - [Clase 5 GPT - Proxies JPA, Optional y Null Safety en Kotlin](05_GPT_FetchDB_NullSafety.md)
-- [Clase 6 - Testing H2 e Initializer idempotente](06_TestH2_InitIdempotente)
+- [Clase 6 - Testing H2 e Initializer idempotente](06_TestH2_InitIdempotente.md)
